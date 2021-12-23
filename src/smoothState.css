@@ -1,0 +1,178 @@
+#ss-overlay {
+    background: rgba(255, 255, 255, 0.7);
+    position: fixed;
+    height: 100vh;
+    width: 100vw;
+    z-index: 9999999999;
+    top: 0;
+    left: 0;
+    float: left;
+    cursor: none;
+}
+
+#ss-container {
+    max-width: 540px;
+    margin: 0 auto;
+}
+
+.ss-animation {
+    animation-duration: .2s;
+    transition-timing-function: ease-out;
+    animation-fill-mode: both;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes moveInFromLeft {
+    0% {
+        opacity: 0;
+        transform: translateX(-100px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes moveOutToLeft {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateX(-50%);
+    }
+}
+
+@keyframes moveInFromRight {
+    0% {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes moveOutToRight {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateX(50%);
+    }
+}
+
+@keyframes moveInFromBottom {
+    0% {
+        opacity: 0;
+        transform: translateY(-100px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes moveOutToBottom {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-50%);
+    }
+}
+
+@keyframes moveInFromTop {
+    0% {
+        opacity: 0;
+        transform: translateY(100px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes moveOutToTop {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(50%);
+    }
+}
+
+#ss-container[data-transition=fade] .ss-animation {
+    animation-name: fadeIn;
+}
+
+#ss-container[data-transition=fade].ss-start .ss-animation {
+    animation-name: fadeOut;
+}
+
+#ss-container[data-transition=moveleft] .ss-animation {
+    animation-name: moveInFromLeft;
+}
+
+#ss-container[data-transition=moveleft].ss-start .ss-animation {
+    animation-name: moveOutToRight;
+}
+
+#ss-container[data-transition=moveright] .ss-animation {
+    animation-name: moveInFromRight;
+}
+
+#ss-container[data-transition=moveright].ss-start .ss-animation {
+    animation-name: moveOutToLeft;
+}
+
+#ss-container[data-transition=movetop] .ss-animation {
+    animation-name: moveInFromTop;
+}
+
+#ss-container[data-transition=movetop].ss-start .ss-animation {
+    animation-name: moveOutToTop;
+}
+
+#ss-container[data-transition=movebottom] .ss-animation {
+    animation-name: moveInFromBottom;
+}
+
+#ss-container[data-transition=movebottom].ss-start .ss-animation {
+    animation-name: moveOutToBottom;
+}

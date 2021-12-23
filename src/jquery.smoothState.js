@@ -5,29 +5,32 @@
  * @author  Miguel Ángel Pérez   reachme@miguel-perez.com
  * @see     http://smoothstate.com
  *
+ * Default cacheLength = 0 is now setting unlimited caching rather than no caching
+ * onStart.render($container, push) changed to accept the push state to inform when the laod comes from the history
+ * progressOverlay implemented for simulating synchronicity and locking user interface.
  */
 
 (function (factory) {
   'use strict';
 
-  if(typeof module === 'object' && typeof module.exports === 'object') {
+  if (typeof module === 'object' && typeof module.exports === 'object') {
     factory(require('jquery'), window, document);
   } else {
     factory(jQuery, window, document);
   }
-}(function ( $, window, document, undefined ) {
+}(function ($, window, document, undefined) {
   'use strict';
 
   /** Abort if browser does not support pushState */
-  if(!window.history.pushState) {
+  if (!window.history.pushState) {
     // setup a dummy fn, but don't intercept on link clicks
-    $.fn.smoothState = function() { return this; };
+    $.fn.smoothState = function () { return this; };
     $.fn.smoothState.options = {};
     return;
   }
 
   /** Abort if smoothState is already present **/
-  if($.fn.smoothState) { return; }
+  if ($.fn.smoothState) { return; }
 
   var
     /** Used later to scroll page to the top */
@@ -78,6 +81,9 @@
       /** Class that will be applied to the body while the page is loading */
       loadingClass: 'is-loading',
 
+      /** Overlay selector to show/hide during the onProgress */
+      progressOverlay: '#ss-overlay',
+
       /** Scroll to top after onStart and scroll to hash after onReady */
       scroll: true,
 
@@ -102,30 +108,30 @@
       },
 
       /** Run before a page load has been activated */
-      onBefore: function ($currentTarget, $container) {},
+      onBefore: function ($currentTarget, $container) { },
 
       /** Run when a page load has been activated */
       onStart: {
         duration: 0,
-        render: function ($container) {}
+        render: function ($container, push) { }
       },
 
       /** Run if the page request is still pending and onStart has finished animating */
       onProgress: {
         duration: 0,
-        render: function ($container) {}
+        render: function ($container) { }
       },
 
       /** Run when requested content is ready to be injected into the page  */
       onReady: {
         duration: 0,
         render: function ($container, $newContent) {
-          $container.html($newContent);
+          $container.empty().html($newContent);
         }
       },
 
       /** Run when content has been injected and all animations are complete  */
-      onAfter: function($container, $newContent) {}
+      onAfter: function ($container, $newContent) { }
     },
 
     /** Utility functions that are decoupled from smoothState */
@@ -144,7 +150,7 @@
         }
         if (typeof match[2] === 'string' &&
           match[2].length > 0 &&
-          match[2].replace(new RegExp(':(' + {'http:': 80, 'https:': 443}[window.location.protocol] +
+          match[2].replace(new RegExp(':(' + { 'http:': 80, 'https:': 443 }[window.location.protocol] +
             ')?$'), '') !== window.location.host) {
           return true;
         }
@@ -156,7 +162,7 @@
        * @param   {string}    href - url being evaluated
        *
        */
-      stripHash: function(href) {
+      stripHash: function (href) {
         return href.replace(/#.*/, '');
       },
 
@@ -170,7 +176,7 @@
         prev = prev || window.location.href;
 
         var hasHash = (href.indexOf('#') > -1) ? true : false,
-            samePath = (utility.stripHash(href) === utility.stripHash(prev)) ? true : false;
+          samePath = (utility.stripHash(href) === utility.stripHash(prev)) ? true : false;
 
         return (hasHash && samePath);
       },
@@ -180,17 +186,17 @@
        * @param  {Object|String} request url or settings obj
        * @return {Object}        settings object
        */
-      translate: function(request) {
-          var defaults = {
-            dataType: 'html',
-            type: 'GET'
-          };
-          if(typeof request === 'string') {
-            request = $.extend({}, defaults, { url: request });
-          } else {
-            request = $.extend({}, defaults, request);
-          }
-          return request;
+      translate: function (request) {
+        var defaults = {
+          dataType: 'html',
+          type: 'GET'
+        };
+        if (typeof request === 'string') {
+          request = $.extend({}, defaults, { url: request });
+        } else {
+          request = $.extend({}, defaults, request);
+        }
+        return request;
       },
 
       /**
@@ -204,15 +210,15 @@
         // URL will only be loaded if it's not an external link, hash, or
         // blacklisted
         return (
-            !utility.isExternal(href) &&
-            !utility.isHash(href) &&
-            !$anchor.is(blacklist) &&
-            !$anchor.prop('target')) &&
-            (
-              typeof hrefRegex === undefined ||
-              hrefRegex === '' ||
-              $anchor.prop('href').search(hrefRegex) !== -1
-            );
+          !utility.isExternal(href) &&
+          !utility.isHash(href) &&
+          !$anchor.is(blacklist) &&
+          !$anchor.prop('target')) &&
+          (
+            typeof hrefRegex === undefined ||
+            hrefRegex === '' ||
+            $anchor.prop('href').search(hrefRegex) !== -1
+          );
       },
 
       /**
@@ -228,6 +234,9 @@
        *
        */
       clearIfOverCapacity: function (cache, cap) {
+        if (!cap)
+          return cache;
+
         // Polyfill Object.keys if it doesn't exist
         if (!Object.keys) {
           Object.keys = function (obj) {
@@ -260,7 +269,7 @@
        * @return  {object}           updated object store
        */
       storePageIn: function (object, url, doc, id, state, destUrl) {
-        var $html = $( '<html></html>' ).append( $(doc) );
+        var $html = $('<html></html>').append($(doc));
         if (typeof state === 'undefined') {
           state = {};
         }
@@ -303,7 +312,7 @@
             if ($(e.delegateTarget).is($element)) {
               e.stopPropagation();
               animationCount--;
-              if(animationCount === 0) {
+              if (animationCount === 0) {
                 $element.trigger(eventname);
               }
             }
@@ -312,7 +321,7 @@
         $element.on(animationstart, onAnimationStart);
         $element.on(animationend, onAnimationEnd);
 
-        $element.on('allanimationend' + resetOn, function(){
+        $element.on('allanimationend' + resetOn, function () {
           animationCount = 0;
           utility.redraw($element);
         });
@@ -325,15 +334,15 @@
     },
 
     /** Handles the popstate event, like when the user hits 'back' */
-    onPopState = function ( e ) {
-      if(e.state !== null) {
+    onPopState = function (e) {
+      if (e.state !== null) {
         var url = window.location.href,
           $page = $('#' + e.state.id),
           page = $page.data('smoothState'),
           diffUrl = (page.href !== url && !utility.isHash(url, page.href)),
           diffState = (e.state !== page.cache[page.href].state);
 
-        if(diffUrl || diffState) {
+        if (diffUrl || diffState) {
           if (diffState) {
             page.clear(page.href);
           }
@@ -343,12 +352,12 @@
     },
 
     /** Constructor function */
-    Smoothstate = function ( element, options ) {
+    Smoothstate = function (element, options) {
       var
         /** Container element smoothState is run on */
         $container = $(element),
 
-        /** ID of the main container */
+        /** ID of the ss container */
         elementId = $container.prop('id'),
 
         /** If a hash was clicked, we'll store it here so we
@@ -377,9 +386,9 @@
          * it will clear the entire cache.
          * @param  {String} url entry that is to be deleted.
          */
-        clear = function(url) {
+        clear = function (url) {
           url = url || false;
-          if(url && cache.hasOwnProperty(url)) {
+          if (url && cache.hasOwnProperty(url)) {
             delete cache[url];
           } else {
             cache = {};
@@ -404,7 +413,7 @@
           cache = utility.clearIfOverCapacity(cache, options.cacheLength);
 
           // Don't prefetch if we have the content already or if it's a form
-          if(cache.hasOwnProperty(settings.url) && typeof settings.data === 'undefined') {
+          if (cache.hasOwnProperty(settings.url) && typeof settings.data === 'undefined') {
             return;
           }
 
@@ -426,10 +435,10 @@
           });
 
           if (options.locationHeader) {
-            ajaxRequest.always(function(htmlOrXhr, status, errorOrXhr){
+            ajaxRequest.always(function (htmlOrXhr, status, errorOrXhr) {
               // Resolve where the XHR is based on done() or fail() argument positions
               var xhr = (htmlOrXhr.statusCode ? htmlOrXhr : errorOrXhr),
-                  redirectedLocation = xhr.getResponseHeader(options.locationHeader);
+                redirectedLocation = xhr.getResponseHeader(options.locationHeader);
 
               if (redirectedLocation) {
                 cache[settings.url].destUrl = redirectedLocation;
@@ -438,16 +447,16 @@
           }
 
           // Call fetch callback
-          if(callback) {
+          if (callback) {
             ajaxRequest.always(callback);
           }
         },
 
-        repositionWindow = function(){
+        repositionWindow = function () {
           // Scroll to a hash anchor on destination page
-          if(targetHash) {
+          if (targetHash) {
             var $targetHashEl = $(targetHash, $container);
-            if($targetHashEl.length){
+            if ($targetHashEl.length) {
               var newPosition = $targetHashEl.offset().top;
               $body.scrollTop(newPosition);
             }
@@ -459,9 +468,9 @@
         updateContent = function (url) {
           // If the content has been requested and is done:
           var containerId = '#' + elementId,
-              $newContent = cache[url] ? $(cache[url].html.html()) : null;
+            $newContent = cache[url] ? $(cache[url].html.html()) : null;
 
-          if($newContent.length) {
+          if ($newContent.length) {
 
             // Update the title
             document.title = cache[url].title;
@@ -470,14 +479,19 @@
             $container.data('smoothState').href = url;
 
             // Remove loading class
-            if(options.loadingClass) {
+            if (options.loadingClass) {
               $body.removeClass(options.loadingClass);
+            }
+
+            // Hide progress overlay
+            if (options.progressOverlay) {
+              $(options.progressOverlay).hide();
             }
 
             // Call the onReady callback and set delay
             options.onReady.render($container, $newContent);
 
-            $container.one('ss.onReadyEnd', function(){
+            $container.one('ss.onReadyEnd', function () {
 
               // Allow prefetches to be made again
               isTransitioning = false;
@@ -488,12 +502,12 @@
               if (options.scroll) {
                 repositionWindow();
               }
-              
+
               bindPrefetchHandlers($container);
 
             });
 
-            window.setTimeout(function(){
+            window.setTimeout(function () {
               $container.trigger('ss.onReadyEnd');
             }, options.onReady.duration);
 
@@ -541,7 +555,7 @@
                 var eventName = hasRunCallback ? 'ss.onProgressEnd' : 'ss.onStartEnd';
 
                 if (!callbBackEnded || !hasRunCallback) {
-                  $container.one(eventName, function(){
+                  $container.one(eventName, function () {
                     updateContent(settings.url);
                     if (!cacheResponse) {
                       clear(settings.url);
@@ -578,16 +592,21 @@
                   hasRunCallback = true;
 
                   // Run the onProgress callback and set trigger
-                  $container.one('ss.onStartEnd', function(){
+                  $container.one('ss.onStartEnd', function () {
 
                     // Add loading class
                     if (options.loadingClass) {
                       $body.addClass(options.loadingClass);
                     }
 
+                    // Show progress overlay
+                    if (options.progressOverlay) {
+                      $(options.progressOverlay).show();
+                    }
+
                     options.onProgress.render($container);
 
-                    window.setTimeout(function (){
+                    window.setTimeout(function () {
                       $container.trigger('ss.onProgressEnd');
                       callbBackEnded = true;
                     }, options.onProgress.duration);
@@ -597,15 +616,15 @@
 
                 window.setTimeout(function () {
                   // Might of been canceled, better check!
-                  if (cache.hasOwnProperty(settings.url)){
+                  if (cache.hasOwnProperty(settings.url)) {
                     responses[cache[settings.url].status]();
                   }
                 }, 10);
               },
 
               /** Error, abort and redirect */
-              error: function (){
-                if(options.debug && consl) {
+              error: function () {
+                if (options.debug && consl) {
                   consl.log('There was an error loading: ' + settings.url);
                 } else {
                   window.location = settings.url;
@@ -618,9 +637,9 @@
           }
 
           // Run the onStart callback and set trigger
-          options.onStart.render($container);
+          options.onStart.render($container, push);
 
-          window.setTimeout(function(){
+          window.setTimeout(function () {
             if (options.scroll) {
               $body.scrollTop(0);
             }
@@ -637,7 +656,7 @@
          */
         hoverAnchor = function (event) {
           var request,
-              $anchor = $(event.currentTarget);
+            $anchor = $(event.currentTarget);
 
           if (utility.shouldLoadAnchor($anchor, options.blacklist, options.hrefRegex) && !isTransitioning) {
             event.stopPropagation();
@@ -734,18 +753,18 @@
         setRateLimitRepeatTime = function () {
           rateLimitRepeatTime = parseInt(Date.now()) + parseInt(options.repeatDelay);
         },
-        
+
         /**
          * Binds prefetch events
          * @param   {object}    event
          */
         bindPrefetchHandlers = function ($element) {
-            		
+
           if (options.anchors && options.prefetch) {
             $element.find(options.anchors).not(options.prefetchBlacklist).on(options.prefetchOn, null, hoverAnchor);
           }
         },
-		
+
         /**
          * Binds all events and inits functionality
          * @param   {object}    event
@@ -772,10 +791,10 @@
         };
 
       /** Merge defaults and global options into current configuration */
-      options = $.extend( {}, $.fn.smoothState.options, options );
+      options = $.extend({}, $.fn.smoothState.options, options);
 
       /** Sets a default state */
-      if(window.history.state === null) {
+      if (window.history.state === null) {
         state = options.alterChangeState({ id: elementId }, document.title, currentHref);
 
         /** Update history entry */
@@ -806,11 +825,11 @@
     },
 
     /** Returns elements with smoothState attached to it */
-    declaresmoothState = function ( options ) {
+    declaresmoothState = function (options) {
       return this.each(function () {
         var tagname = this.tagName.toLowerCase();
         // Checks to make sure the smoothState element has an id and isn't already bound
-        if(this.id && tagname !== 'body' && tagname !== 'html' && !$.data(this, 'smoothState')) {
+        if (this.id && tagname !== 'body' && tagname !== 'html' && !$.data(this, 'smoothState')) {
           // Makes public methods available via $('element').data('smoothState');
           $.data(this, 'smoothState', new Smoothstate(this, options));
         } else if (!this.id && consl) {
